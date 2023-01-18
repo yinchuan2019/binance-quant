@@ -293,7 +293,7 @@ class OrderManager(object):
             if trade is not None:
                 if trade['trade'] == 'BUY':
                     print(f'BUY : {trade}')
-                    isToBuy = self.judge_to_buy_command(self.orderInfoSavePath, trade)
+                    isToBuy = self.judge_to_buy_command(self.order_info_save_path, trade)
 
                     if isToBuy is True:
                         # base_asset = "USDT"

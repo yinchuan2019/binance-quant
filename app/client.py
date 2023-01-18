@@ -148,6 +148,31 @@ class Client(object):
 
         return params
 
+    def _future_order(self, symbol, quantity, side, baseAssetCount, price=None, newclientorderid=None):
+        '''
+        :param market:币种类型。如：BTCUSDT、ETHUSDT
+        :param quantity: 购买量
+        :param side: 订单方向，买还是卖
+        :param price: 价格
+        :return:
+        '''
+        params = {}
+
+        if price is not None:
+            params["type"] = "LIMIT"
+            params["price"] = self._format(price)
+            params["timeInForce"] = "GTC"
+            params["quantity"] = '%.8f' % quantity
+        else:
+            params["type"] = "MARKET"
+            params["quoteOrderQty"] = baseAssetCount
+
+        params["symbol"] = symbol
+        params["side"] = side
+        params["newClientOrderId"] = newclientorderid
+
+        return params
+
     def _get_no_sign(self, path, params={}):
         query = urlencode(params)
         url = "%s?%s" % (path, query)
@@ -219,7 +244,7 @@ class Client(object):
             :param price: 开仓价格
         '''
         path = "%s/fapi/v1/order" % self.FUTURE_URL
-        params = self._order(symbol, quantity, side, baseAssetCount, positionSide,newClientOrderId)
+        params = self._future_order(symbol, quantity, side, baseAssetCount, positionSide, newClientOrderId)
         return self._post(path, params)
 
 
