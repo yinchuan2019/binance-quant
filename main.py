@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from app.order_manager import OrderManager
+from app.spot_order import SportOrder
 
 import time
 import datetime
@@ -8,12 +8,21 @@ import math
 import json,os
 from app import const as c
 from app import message as send_msg
+from binance.spot import Spot
 
 log = open('log.txt', 'w')
 
-orderManager = OrderManager(c.base_asset, c.count_asset, c.quote_asset, c.binance_market)
+client = Spot()
+# Get server timestamp
+print(f'client time : {client.time()}')
+# Get klines of BTCUSDT at 1m interval
+#print(client.klines(c.base_asset + c.quote_asset, "3m"))
 
-orderManager_eth = OrderManager("USDT", 100, "ETH", c.binance_market)
+# API key/secret are required for user data endpoints
+
+orderManager = SportOrder(c.base_asset, c.count_asset, c.quote_asset, c.binance_market)
+
+#orderManager_eth = OrderManager("USDT", 100, "ETH", c.binance_market)
 
 
 # 发送消息通知
@@ -42,7 +51,7 @@ def tasklist():
     #创建一个按秒间隔执行任务
     # schedule.every().hours.at("04:05").do(binance_func)
 
-    schedule.every(1).minutes.do(begin)
+    schedule.every(2).minutes.do(begin)
 
     #schedule.every(20).minutes.do(sendServiceInfo)
 
