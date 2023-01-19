@@ -73,14 +73,14 @@ class SportOrder(object):
             self.exchange_rule = exchangeInfo(exchange_info['symbols'][0])
 
             # 获取K线数据
-            kline_list = client.klines(self.symbol, c.kLine_type)
+            kline_list = client.klines(self.base_asset, c.kLine_type)
             # k线数据转为 DataFrame格式
             kline_df = dALines.klines_to_data_frame(kline_list)
             # 判断交易方向
             trade = dALines.trade_stock(c.ma_min, c.ma_max, self.symbol, kline_df)
 
             if trade is not None:
-                if trade['trade'] == 'BUY':
+                if trade['trade'] == 'gold':
                     print(f'IS_BUY : {trade}')
                     isToBuy = self.judge_to_buy_command(self.order_info_save_path, trade)
 
@@ -103,7 +103,7 @@ class SportOrder(object):
                         # 查询当前价格
                         ticker_price = client.ticker_price(self.symbol)
                         # 购买量
-                        count = self.format_trade_quantity(float(balance) / float(ticker_price["price"]))
+                        count = self.format_trade_quantity(balance / ticker_price["price"])
 
                         order_params = {}
                         # if price is not None:
@@ -126,7 +126,7 @@ class SportOrder(object):
                         order_result_str = self.print_order_info(order_result)
                         msg.send_msg(order_result_str)
 
-                elif trade['trade'] == 'SELL':
+                elif trade['trade'] == 'dead':
                     print(f'IS_SELL : {trade}')
                     dictOrder = self.read_order_info(self.order_info_save_path)
 
@@ -138,13 +138,13 @@ class SportOrder(object):
                         balances = ud_account["balances"]
                         if balances is not None and type(balances).__name__ == 'list':
                             for balance in balances:
-                                if str(balance["asset"]) == self.base_asset:
+                                if str(balance["asset"]) == self.quote_asset:
                                     self.account_info = balance
 
                         # 购买，所用资金量
                         print(f'卖出现货: {self.account_info["asset"]}:{self.account_info["free"]}')
 
-                        quantity = self.format_trade_quantity(float(self.account_info["free"]))
+                        quantity = self.format_trade_quantity(self.account_info["free"])
                         # 查询当前价格
                         # curprice = client.get_ticker_price(self.symbol)
                         if quantity <= 0:
@@ -154,7 +154,7 @@ class SportOrder(object):
                             # 卖出
                             order_params = {}
                             order_params["newClientOrderId"] = ''.join(str(uuid.uuid4()).split('-'))
-                            order_params["quoteOrderQty"] = 1000
+                            order_params["quoteOrderQty"] = 10
                             res_order_sell = client.new_order(self.symbol, "SELL", "MARKET", **order_params)
                             print(f'SELL RESULT: {res_order_sell}')
 
@@ -162,7 +162,6 @@ class SportOrder(object):
                             self.clear_order_nfo(self.order_info_save_path)
                             order_result_str = self.print_order_info(res_order_sell)
                             msg.send_msg(order_result_str)
-
 
             else:
                 print("暂不执行任何交易")
@@ -180,14 +179,12 @@ class SportOrder(object):
 
 
     # 格式化交易信息结果
-    def print_order_info(self, json):
+    def print_order_info(self, json, isUm = False):
         str_result = ""
         if type(json).__name__ == 'dict':
             all_keys = json.keys()
             if 'symbol' in json and 'orderId' in json:
-
-                time_local = time.localtime(1673968939082 / 1000)
-                time_str = time.strftime('%Y-%m-%d %H:%M:%S', time_local)
+                time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time() / 1000))
                 str_result = str_result + "时间：" + str(time_str) + "\n"
                 str_result = str_result + "币种：" + str(json['symbol']) + "\n"
                 str_result = str_result + "价格：" + str(json['fills']) + "\n"
@@ -268,9 +265,9 @@ class SportOrder(object):
         print(f'{self.symbol} 最小交易量限制 {str(minQty)}')
 
         if self.exchange_rule is not None and minQty > 0:
-            newQuantity = (originalQuantity//minQty) * minQty
+            newQuantity = (float(originalQuantity)//minQty) * minQty
         else:
-            newQuantity = math.floor(originalQuantity)
+            newQuantity = math.floor(float(originalQuantity))
 
         print(f'{self.symbol} 交易量格式化 {str(newQuantity)}')
         return newQuantity
@@ -327,7 +324,7 @@ class SportOrder(object):
                 if buyPrice * tmpSellStrategy['profit'] <= curprice:
                     print("sellStrategy--sellStrategy3--2")
 
-                    quantity = self.format_trade_quantity(float(asset_coin["free"]) * tmpSellStrategy['sell'])
+                    quantity = self.format_trade_quantity(asset_coin["free"] * tmpSellStrategy['sell'])
                     # 卖出
                     msgInfo = msgInfo + self.do_sell_func(self.symbol, quantity, curprice)
                     del dictOrder['sellStrategy3']
@@ -344,7 +341,7 @@ class SportOrder(object):
                 if buyPrice * tmpSellStrategy['profit'] <= curprice:
                     print("sellStrategy--sellStrategy2--2")
 
-                    quantity = self.format_trade_quantity(float(asset_coin["free"]) * tmpSellStrategy['sell'])
+                    quantity = self.format_trade_quantity(asset_coin["free"] * tmpSellStrategy['sell'])
                     # 卖出
                     msgInfo = msgInfo + self.do_sell_func(self.symbol, quantity, curprice)
                     del dictOrder['sellStrategy2']
@@ -361,7 +358,7 @@ class SportOrder(object):
                 if buyPrice * tmpSellStrategy['profit'] <= curprice:
                     print("sellStrategy--sellStrategy1--2")
 
-                    quantity = self.format_trade_quantity(float(asset_coin["free"]) * tmpSellStrategy['sell'])
+                    quantity = self.format_trade_quantity(asset_coin["free"] * tmpSellStrategy['sell'])
                     # 卖出
                     msgInfo = msgInfo + self.do_sell_func(self.symbol, quantity, curprice)
                     del dictOrder['sellStrategy1']
