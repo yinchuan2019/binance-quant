@@ -132,13 +132,13 @@ class MovingAverage:
 
 
         if last_row['openTime'] == death_date.sort_values().tail(1).iloc[0]:
-            #sell
+            #dead
             return {'trade': 'dead', 'openTime': last_row['openTime'], 'closePrice': last_row['closePrice']}
 
         if last_row['openTime'] == golden_date.sort_values().tail(1).iloc[0]:
-            #buy
-            return {'trade': 'dead', 'openTime': last_row['openTime'], 'closePrice': last_row['closePrice']}
-        return {'trade': 'dead', 'openTime': last_row['openTime'], 'closePrice': last_row['closePrice']}
+            #gold
+            return {'trade': 'gold', 'openTime': last_row['openTime'], 'closePrice': last_row['closePrice']}
+        return None
 
         # for i in range(0, len(death_date)):
         #

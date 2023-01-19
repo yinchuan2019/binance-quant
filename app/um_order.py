@@ -78,8 +78,8 @@ class UmOrder(object):
                 elif trade['trade'] == 'dead':
                     print(f'start dead--> : {trade}')
                     ##平多
-                    #order_result = self.sell(ud_account, "SELL")
-                    #print(f'dead sell order_result:{order_result}')
+                    order_result = self.sell(ud_account, "SELL")
+                    print(f'dead sell order_result:{order_result}')
                     ##买入做空
                     order_result = self.buy(ud_account, "SELL")
                     print(f'dead buy order_result:{order_result}')
