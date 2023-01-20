@@ -1,15 +1,13 @@
 import json, os, time, datetime, math
 import uuid
 import pandas as pd
-from app.message import SendMsg
+from app.message import send_msg
 from app.moving_average import MovingAverage
 import schedule
 from . import const as c
 from binance.um_futures import UMFutures
 
-client = UMFutures()
-# Get server timestamp
-print(f'server time : {client.time()}')
+
 # API key/secret are required for user data endpoints
 if c.isTest:
     client = UMFutures(key=c.api_key_future_test, secret=c.api_secret_future_test, base_url=c.FUTURE_URL_TEST)
@@ -17,7 +15,6 @@ else:
     client = UMFutures(key=c.api_key, secret=c.api_secret)
 
 dALines = MovingAverage()
-msg = SendMsg()
 
 class UmOrder(object):
     def __init__(self, baseasset, countasset, quoteasset, market):
@@ -37,9 +34,8 @@ class UmOrder(object):
         self.order_info_save_path = "./" + self.symbol +"_ORDER_INFO.json"
 
     def begin(self):
-        now = datetime.datetime.now()
-        ts = now.strftime('%Y-%m-%d %H:%M:%S')
-        print(f'symbol: {self.symbol} now: {ts}')
+        ts = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f'SYMBOL: {self.symbol} 时间: {ts}')
         try:
             exchange_info = client.exchange_info()
             if exchange_info is not None and type(exchange_info['symbols']).__name__ == 'list':
@@ -70,10 +66,10 @@ class UmOrder(object):
 
                     # 存储买入订单信息
                     #if order_result is not None and "symbol" in order_result:
-                    #    self.write_order_info(self.order_info_save_path, order_result)
+                    #self.write_order_info(self.order_info_save_path, order_result)
                     #order_result["cummulativeQuoteQty"] = balance
                     order_result_str = self.print_order_info(order_result)
-                    msg.send_msg(order_result_str)
+                    send_msg(order_result_str)
                 # 死叉
                 elif trade['trade'] == 'dead':
                     print(f'start dead--> : {trade}')
@@ -87,17 +83,15 @@ class UmOrder(object):
                     # 清理本地订单信息
                     #self.clear_order_nfo(self.order_info_save_path)
                     order_result_str = self.print_order_info(order_result)
-                    msg.send_msg(order_result_str)
+                    send_msg(order_result_str)
             else:
                 print("暂不执行任何交易")
                 if c.isOpenSellStrategy:
                     print("开启卖出策略")
-                    msgInfo = self.sell_strategy(self.order_info_save_path)
+                    #msgInfo = self.sell_strategy(self.order_info_save_path)
 
         except Exception as ex:
-            err_str = "出现如下异常：%s" % ex
-            print(err_str)
-
+            print("出现如下异常：%s" % ex)
         finally:
             None
 
@@ -169,13 +163,13 @@ class UmOrder(object):
         if type(json).__name__ == 'dict':
             all_keys = json.keys()
             if 'symbol' in json and 'orderId' in json:
-                time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time() / 1000))
+                time_str = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
                 str_result = str_result + "时间：" + str(time_str) + "\n"
+                str_result = str_result + "方向：" + str(json['side']) + "\n"
                 str_result = str_result + "币种：" + str(json['symbol']) + "\n"
                 #str_result = str_result + "价格：" + str(json['fills']) + "\n"
                 #str_result = str_result + "总价：" + str(json['cummulativeQuoteQty']) + "\n"
                 str_result = str_result + "数量：" + str(json['origQty']) + "\n"
-                str_result = str_result + "方向：" + str(json['side']) + "\n"
             else:
                 str_result = str(json)
         else:

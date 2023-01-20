@@ -1,12 +1,17 @@
 import json
 import time
-
 from urllib.parse import urlencode
-from binance.error import (
-    ParameterRequiredError,
-    ParameterValueError,
-    ParameterTypeError,
-)
+from binance.um_futures import UMFutures
+
+
+
+
+
+def get_server_status():
+    client = UMFutures()
+    # Get server timestamp
+    client.ping()
+    return client.time()
 
 
 def cleanNoneValue(d) -> dict:
@@ -15,34 +20,6 @@ def cleanNoneValue(d) -> dict:
         if d[k] is not None:
             out[k] = d[k]
     return out
-
-
-def check_required_parameter(value, name):
-    if not value and value != 0:
-        raise ParameterRequiredError([name])
-
-
-def check_required_parameters(params):
-    """validate multiple parameters
-    params = [
-        ['btcusdt', 'symbol'],
-        [10, 'price']
-    ]
-
-    """
-    for p in params:
-        check_required_parameter(p[0], p[1])
-
-
-def check_enum_parameter(value, enum_class):
-    if value not in set(item.value for item in enum_class):
-        raise ParameterValueError([value])
-
-
-def check_type_parameter(value, name, data_type):
-    if value is not None and type(value) != data_type:
-        raise ParameterTypeError([name, data_type])
-
 
 def get_timestamp():
     return int(time.time() * 1000)

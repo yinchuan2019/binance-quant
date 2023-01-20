@@ -2,15 +2,11 @@ import json, os, time, datetime, math
 import uuid
 
 import pandas as pd
-from app.message import SendMsg
+from app.message import send_msg
 from app.moving_average import MovingAverage
 import schedule
 from . import const as c
 from binance.spot import Spot
-#import client1 as client1
-client = Spot()
-# Get server timestamp
-print(f'server time : {client.time()}')
 # API key/secret are required for user data endpoints
 if c.isTest:
     client = Spot(api_key=c.api_key_test, api_secret=c.api_secret_test, base_url=c.BASE_URL_V3_TEST)
@@ -18,7 +14,6 @@ else:
     client = Spot(api_key=c.api_key, api_secret=c.api_secret)
 
 dALines = MovingAverage()
-msg = SendMsg()
 
 class exchangeInfo(object):
     def __init__(self, dict):
@@ -124,7 +119,7 @@ class SportOrder(object):
                             self.write_order_info(self.order_info_save_path, order_result)
 
                         order_result_str = self.print_order_info(order_result)
-                        msg.send_msg(order_result_str)
+                        send_msg(order_result_str)
 
                 elif trade['trade'] == 'dead':
                     print(f'IS_SELL : {trade}')
@@ -161,7 +156,7 @@ class SportOrder(object):
                             # 清理本地订单信息
                             self.clear_order_nfo(self.order_info_save_path)
                             order_result_str = self.print_order_info(res_order_sell)
-                            msg.send_msg(order_result_str)
+                            send_msg(order_result_str)
 
             else:
                 print("暂不执行任何交易")

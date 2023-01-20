@@ -121,7 +121,7 @@ class MovingAverage:
         # print(str(row["openTime"]) + "\t" +row["openPrice"] + "\t" +row["maxPrice"] + "\t"+row["minPrice"] + "\t"+row["closePrice"] + "\t"+str(row["closeTime"]) + "\t")
 
         last_row = df.iloc[-1, :]
-        print(f'last_row:\n {last_row.to_string()}')
+        print(f'last_row:\n{last_row.to_string()}')
         bool1 = df['maMin'] < df['maMax']  # 得到 bool 类型的 Series
         bool2 = df['maMin'] > df['maMax']
 

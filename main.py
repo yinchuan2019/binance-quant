@@ -8,39 +8,33 @@ import schedule
 import math
 import json,os
 from app import const as c
-from app import message as send_msg
+from app.message import send_msg
+from app.lib.utils import get_server_status
 from binance.spot import Spot
 
 log = open('log.txt', 'w')
 
 # API key/secret are required for user data endpoints
-
 orderManager = SportOrder(c.base_asset, c.count_asset, c.quote_asset, c.binance_market)
 umManager = UmOrder(c.base_asset, c.count_asset, c.quote_asset, c.binance_market)
 
-
-def begin():
-    #orderManager.begin()
-    umManager.begin()
-    # time.sleep(5)
-    # orderManager_eth.binance_func()
-
-
 def sendServiceInfo():
-    str = "服务正常--ok"
+    server_time = get_server_status()
+    now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(time.time()))
+    send_msg(f'Time: {now} \nserver Time: {time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(server_time["serverTime"]) / 1000))}')
 
 # 创建循环任务
-def tasklist():
-    print("start tasklist")
+def start():
+    print("start main")
+    #orderManager.begin()
+    #umManager.begin()
     #清空任务
     schedule.clear()
     #创建一个按秒间隔执行任务
     # schedule.every().hours.at("04:05").do(binance_func)
+    schedule.every(2).seconds.do(umManager.begin)
 
-    #schedule.every(2).minutes.do(begin)
-    schedule.every(2).minutes.do(begin)
-
-    #schedule.every(20).minutes.do(sendServiceInfo)
+    schedule.every(12).hours.do(sendServiceInfo)
 
     while True:
         schedule.run_pending()
@@ -51,7 +45,5 @@ def tasklist():
 if __name__ == "__main__":
 
     # 启动，先从币安获取交易规则， https://api.binance.com/api/v3/exchangeInfo
-    tasklist()
-
-    #begin()
+    start()
 
