@@ -112,7 +112,7 @@ class UmOrder(object):
 
         # 查询当前价格
         ticker_price = client.ticker_price(self.symbol)
-        # 购买量
+        # 经测试 购买量 指增加杠杆之后的总数量   保证金 是购买量除以杠杆/20 。 乘以10指每次成交一半保证金
         count = format_trade_quantity(self.symbol, float(balance) / float(ticker_price["price"]), float(self.exchange_rule.minQty)) * 10
 
         order_params = {}
