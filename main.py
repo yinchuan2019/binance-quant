@@ -32,7 +32,7 @@ def start():
     schedule.clear()
     #创建一个按秒间隔执行任务
     # schedule.every().hours.at("04:05").do(binance_func)
-    schedule.every(2).seconds.do(umManager.begin)
+    schedule.every(2).minutes.do(umManager.begin)
 
     schedule.every(12).hours.do(sendServiceInfo)
 
@@ -43,7 +43,8 @@ def start():
 
 # 调试看报错运行下面，正式运行用上面
 if __name__ == "__main__":
-
+    #a = (-77.44160255 // 0.001) * 0.001
+    #print(a)
     # 启动，先从币安获取交易规则， https://api.binance.com/api/v3/exchangeInfo
     start()
 

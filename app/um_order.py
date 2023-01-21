@@ -6,6 +6,7 @@ from app.moving_average import MovingAverage
 import schedule
 from . import const as c
 from binance.um_futures import UMFutures
+from app.lib.utils import format_trade_quantity
 
 
 # API key/secret are required for user data endpoints
@@ -112,7 +113,7 @@ class UmOrder(object):
         # 查询当前价格
         ticker_price = client.ticker_price(self.symbol)
         # 购买量
-        count = self.format_trade_quantity(float(balance) / float(ticker_price["price"])) * 10
+        count = format_trade_quantity(self.symbol, float(balance) / float(ticker_price["price"]), float(self.exchange_rule.minQty)) * 10
 
         order_params = {}
         # if price is not None:
@@ -153,7 +154,7 @@ class UmOrder(object):
         # order_params["closePosition"] = True
         # order_params["stopPrice"] = curprice["price"]
         order_params["reduceOnly"] = True
-        order_params["quantity"] = abs(self.format_trade_quantity(self.account_info["notional"]))
+        order_params["quantity"] = format_trade_quantity(self.symbol, abs(float(self.account_info["notional"])), float(self.exchange_rule.minQty))
         order_result = client.new_order(self.symbol, flag, "MARKET", **order_params)
         return order_result
 
@@ -190,7 +191,6 @@ class UmOrder(object):
     # 比较本次买入提示的str是否重复
     def judge_to_buy_command(self, filePath, trade):
         orderDict = self.read_order_info(filePath)
-
         if orderDict is None:
             return True # 购买
 
@@ -200,7 +200,6 @@ class UmOrder(object):
         #         return False #不执行购买，因为重复
 
         return True
-
 
     # 获取 上次买入订单中的价格Price
     def price_of_previous_order(self, filePath):
@@ -234,115 +233,99 @@ class UmOrder(object):
 
         self.writeOrderInfo(filePath, dictObj)
 
-    # 根据交易规则，格式化交易量
-    def format_trade_quantity(self, originalQuantity):
-        minQty = float(self.exchange_rule.minQty)
-        print(f'{self.symbol} 原始交易量 {str(originalQuantity)}')
-        print(f'{self.symbol} 最小交易量限制 {str(minQty)}')
-
-        if self.exchange_rule is not None and minQty > 0:
-            newQuantity = (float(originalQuantity)//minQty) * minQty
-        else:
-            newQuantity = math.floor(float(originalQuantity))
-
-        print(f'{self.symbol} 交易量格式化 {str(newQuantity)}')
-        return newQuantity
-
-
-
     #  执行卖出
-    def do_sell_func(self, symbol, quantity, curprice):
-        print("马上卖出 " + str(symbol) + " " + str(quantity) + " 个，单价：" + str(curprice))
-
-        # 如果总价值小于10
-        if (quantity * curprice) < 10:
-            quantity = self.format_trade_quantity(11.0 / curprice)
-            if (quantity * curprice) < 10:
-                quantity = self.format_trade_quantity(13.0 / curprice)
-                if (quantity * curprice) < 10:
-                    quantity = self.format_trade_quantity(16.0 / curprice)
-                    if (quantity * curprice) < 10:
-                        quantity = self.format_trade_quantity(20.0 / curprice)
-
-        # 卖出
-        sell_result = client.sell(symbol, quantity, curprice)
-        print("出售部分结果：")
-        print("量：" + str(quantity) + ", 价格：" + str(curprice) + ", 总价值：" + str(quantity * curprice))
-        print(sell_result)
-        order_result_str = self.print_order_info(sell_result)
-        msgInfo = "卖出结果：\n" + str(order_result_str)
-
-        return msgInfo
-
-    # 分批出售策略
-    def sell_strategy(self, filePath):
-        msgInfo = ""
-        dictOrder = self.read_order_info(filePath)
-        if dictOrder is None:
-            return msgInfo
-
-        # 读取上次买入的价格
-        buyPrice = self.price_of_previous_order(self.order_info_save_path)
-        if buyPrice > 0:
-            # 查询当前价格
-            curprice = client.get_ticker_price(self.symbol)
-            print("当前 " + str(self.symbol) + " 价格：" + str(curprice))
-            # 查询当前资产
-            asset_coin = client.get_spot_asset_by_symbol(self.quote_asset)
-            print(self.quote_asset + " 资产2：")
-            print(asset_coin)
-
-            if "sellStrategy3" in dictOrder:
-                print("sellStrategy--sellStrategy3--1")
-                tmpSellStrategy = dictOrder['sellStrategy3']
-                print("买入价格：" + str(buyPrice) + " * " + str(tmpSellStrategy) + " = " + str(
-                    buyPrice * tmpSellStrategy['profit']) + " 和 当前价格：" + str(curprice) + " 比较")
-                if buyPrice * tmpSellStrategy['profit'] <= curprice:
-                    print("sellStrategy--sellStrategy3--2")
-
-                    quantity = self.format_trade_quantity(float(asset_coin["free"]) * tmpSellStrategy['sell'])
-                    # 卖出
-                    msgInfo = msgInfo + self.do_sell_func(self.symbol, quantity, curprice)
-                    del dictOrder['sellStrategy3']
-                    self.write_order_info(filePath, dictOrder)
-                    dictOrder = self.read_order_info(filePath)
-                    print("部分卖出--sellStrategy3")
-
-            if "sellStrategy2" in dictOrder:
-                tmpSellStrategy = dictOrder['sellStrategy2']
-                print("sellStrategy--sellStrategy2--1")
-                print("买入价格：" + str(buyPrice) + " * " + str(tmpSellStrategy) + " = " + str(
-                    buyPrice * tmpSellStrategy['profit']) + " 和 当前价格：" + str(curprice) + " 比较")
-
-                if buyPrice * tmpSellStrategy['profit'] <= curprice:
-                    print("sellStrategy--sellStrategy2--2")
-
-                    quantity = self.format_trade_quantity(float(asset_coin["free"]) * tmpSellStrategy['sell'])
-                    # 卖出
-                    msgInfo = msgInfo + self.do_sell_func(self.symbol, quantity, curprice)
-                    del dictOrder['sellStrategy2']
-                    self.write_order_info(filePath, dictOrder)
-                    dictOrder = self.read_order_info(filePath)
-                    print("部分卖出--sellStrategy2")
-
-            if "sellStrategy1" in dictOrder:
-                tmpSellStrategy = dictOrder['sellStrategy1']
-                print("sellStrategy--sellStrategy1--1")
-                print("买入价格：" + str(buyPrice) + " * " + str(tmpSellStrategy) + " = " + str(
-                    buyPrice * tmpSellStrategy['profit']) + " 和 当前价格：" + str(curprice) + " 比较")
-
-                if buyPrice * tmpSellStrategy['profit'] <= curprice:
-                    print("sellStrategy--sellStrategy1--2")
-
-                    quantity = self.format_trade_quantity(float(asset_coin["free"]) * tmpSellStrategy['sell'])
-                    # 卖出
-                    msgInfo = msgInfo + self.do_sell_func(self.symbol, quantity, curprice)
-                    del dictOrder['sellStrategy1']
-                    self.do_sell_func(filePath, dictOrder)
-                    dictOrder = self.read_order_info(filePath)
-                    print("部分卖出--sellStrategy1")
-
-        return msgInfo
+    # def do_sell_func(self, symbol, quantity, curprice):
+    #     print("马上卖出 " + str(symbol) + " " + str(quantity) + " 个，单价：" + str(curprice))
+    #
+    #     # 如果总价值小于10
+    #     if (quantity * curprice) < 10:
+    #         quantity = self.format_trade_quantity(11.0 / curprice)
+    #         if (quantity * curprice) < 10:
+    #             quantity = self.format_trade_quantity(13.0 / curprice)
+    #             if (quantity * curprice) < 10:
+    #                 quantity = self.format_trade_quantity(16.0 / curprice)
+    #                 if (quantity * curprice) < 10:
+    #                     quantity = self.format_trade_quantity(20.0 / curprice)
+    #
+    #     # 卖出
+    #     sell_result = client.sell(symbol, quantity, curprice)
+    #     print("出售部分结果：")
+    #     print("量：" + str(quantity) + ", 价格：" + str(curprice) + ", 总价值：" + str(quantity * curprice))
+    #     print(sell_result)
+    #     order_result_str = self.print_order_info(sell_result)
+    #     msgInfo = "卖出结果：\n" + str(order_result_str)
+    #
+    #     return msgInfo
+    #
+    # # 分批出售策略
+    # def sell_strategy(self, filePath):
+    #     msgInfo = ""
+    #     dictOrder = self.read_order_info(filePath)
+    #     if dictOrder is None:
+    #         return msgInfo
+    #
+    #     # 读取上次买入的价格
+    #     buyPrice = self.price_of_previous_order(self.order_info_save_path)
+    #     if buyPrice > 0:
+    #         # 查询当前价格
+    #         curprice = client.get_ticker_price(self.symbol)
+    #         print("当前 " + str(self.symbol) + " 价格：" + str(curprice))
+    #         # 查询当前资产
+    #         asset_coin = client.get_spot_asset_by_symbol(self.quote_asset)
+    #         print(self.quote_asset + " 资产2：")
+    #         print(asset_coin)
+    #
+    #         if "sellStrategy3" in dictOrder:
+    #             print("sellStrategy--sellStrategy3--1")
+    #             tmpSellStrategy = dictOrder['sellStrategy3']
+    #             print("买入价格：" + str(buyPrice) + " * " + str(tmpSellStrategy) + " = " + str(
+    #                 buyPrice * tmpSellStrategy['profit']) + " 和 当前价格：" + str(curprice) + " 比较")
+    #             if buyPrice * tmpSellStrategy['profit'] <= curprice:
+    #                 print("sellStrategy--sellStrategy3--2")
+    #
+    #                 quantity = self.format_trade_quantity(float(asset_coin["free"]) * tmpSellStrategy['sell'])
+    #                 # 卖出
+    #                 msgInfo = msgInfo + self.do_sell_func(self.symbol, quantity, curprice)
+    #                 del dictOrder['sellStrategy3']
+    #                 self.write_order_info(filePath, dictOrder)
+    #                 dictOrder = self.read_order_info(filePath)
+    #                 print("部分卖出--sellStrategy3")
+    #
+    #         if "sellStrategy2" in dictOrder:
+    #             tmpSellStrategy = dictOrder['sellStrategy2']
+    #             print("sellStrategy--sellStrategy2--1")
+    #             print("买入价格：" + str(buyPrice) + " * " + str(tmpSellStrategy) + " = " + str(
+    #                 buyPrice * tmpSellStrategy['profit']) + " 和 当前价格：" + str(curprice) + " 比较")
+    #
+    #             if buyPrice * tmpSellStrategy['profit'] <= curprice:
+    #                 print("sellStrategy--sellStrategy2--2")
+    #
+    #                 quantity = self.format_trade_quantity(float(asset_coin["free"]) * tmpSellStrategy['sell'])
+    #                 # 卖出
+    #                 msgInfo = msgInfo + self.do_sell_func(self.symbol, quantity, curprice)
+    #                 del dictOrder['sellStrategy2']
+    #                 self.write_order_info(filePath, dictOrder)
+    #                 dictOrder = self.read_order_info(filePath)
+    #                 print("部分卖出--sellStrategy2")
+    #
+    #         if "sellStrategy1" in dictOrder:
+    #             tmpSellStrategy = dictOrder['sellStrategy1']
+    #             print("sellStrategy--sellStrategy1--1")
+    #             print("买入价格：" + str(buyPrice) + " * " + str(tmpSellStrategy) + " = " + str(
+    #                 buyPrice * tmpSellStrategy['profit']) + " 和 当前价格：" + str(curprice) + " 比较")
+    #
+    #             if buyPrice * tmpSellStrategy['profit'] <= curprice:
+    #                 print("sellStrategy--sellStrategy1--2")
+    #
+    #                 quantity = self.format_trade_quantity(float(asset_coin["free"]) * tmpSellStrategy['sell'])
+    #                 # 卖出
+    #                 msgInfo = msgInfo + self.do_sell_func(self.symbol, quantity, curprice)
+    #                 del dictOrder['sellStrategy1']
+    #                 self.do_sell_func(filePath, dictOrder)
+    #                 dictOrder = self.read_order_info(filePath)
+    #                 print("部分卖出--sellStrategy1")
+    #
+    #     return msgInfo
 
 class exchangeInfo(object):
     def __init__(self, dict):
@@ -352,7 +335,6 @@ class exchangeInfo(object):
             self.baseAssetPrecision = dict['baseAssetPrecision']
             self.quoteAsset = dict['quoteAsset']
             self.quotePrecision = dict['quotePrecision']
-
             filters = dict['filters']
             for filter in filters:
                 if filter['filterType'] == 'PRICE_FILTER':
@@ -362,7 +344,6 @@ class exchangeInfo(object):
                     self.minPrice = filter['minPrice']
                     self.maxPrice = filter['maxPrice']
                     self.tickSize = filter['tickSize']
-
                 if filter['filterType'] == 'LOT_SIZE':
                     # "minQty": "0.10000000",
                     # "maxQty": "9000000.00000000",
@@ -370,6 +351,8 @@ class exchangeInfo(object):
                     self.minQty = filter['minQty']
                     self.maxQty = filter['maxQty']
                     self.stepSize = filter['stepSize']
+
+
 if __name__ == '__main__':
     #asset_coin = client1.account()
     print(f'server time : {client.time()}')

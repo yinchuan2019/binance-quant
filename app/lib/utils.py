@@ -1,10 +1,8 @@
 import json
 import time
+import math
 from urllib.parse import urlencode
 from binance.um_futures import UMFutures
-
-
-
 
 
 def get_server_status():
@@ -12,6 +10,19 @@ def get_server_status():
     # Get server timestamp
     client.ping()
     return client.time()
+
+# 根据交易规则，格式化交易量
+def format_trade_quantity(symbol, originalQuantity, minQty):
+    print(f'{symbol} 原始交易量 {str(originalQuantity)}')
+    print(f'{symbol} 最小交易量限制 {str(minQty)}')
+
+    if minQty > 0:
+        newQuantity = (float(originalQuantity) // minQty) * minQty
+    else:
+        newQuantity = math.floor(float(originalQuantity))
+
+    print(f'{symbol} 交易量格式化 {str(newQuantity)}')
+    return newQuantity
 
 
 def cleanNoneValue(d) -> dict:
