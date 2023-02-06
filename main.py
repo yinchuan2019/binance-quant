@@ -4,13 +4,12 @@ from app.um_order import UmOrder
 
 import time
 import datetime
-import schedule
 import math
 import json,os
 from app import const as c
 from app.message import send_msg
 from app.lib.utils import get_server_status
-from binance.spot import Spot
+from apscheduler.schedulers.blocking import BlockingScheduler
 
 log = open('log.txt', 'w')
 
@@ -26,19 +25,14 @@ def sendServiceInfo():
 # 创建循环任务
 def start():
     print("start main")
-    #orderManager.begin()
-    #umManager.begin()
-    #清空任务
-    schedule.clear()
-    #创建一个按秒间隔执行任务
-    # schedule.every().hours.at("04:05").do(binance_func)
-    schedule.every(2).minutes.do(umManager.begin)
+    # 创建调度器
+    scheduler = BlockingScheduler()
+    # 添加时间间隔为3秒的任务
+    scheduler.add_job(umManager.begin, "interval", seconds=300, id="umManager")
+    scheduler.add_job(sendServiceInfo, "interval", seconds=3600*12, id="sendServiceInfo")
 
-    schedule.every(12).hours.do(sendServiceInfo)
-
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    # 启动调度
+    scheduler.start()
 
 
 # 调试看报错运行下面，正式运行用上面

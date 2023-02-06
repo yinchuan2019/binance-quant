@@ -16,3 +16,4 @@ six==1.15.0
 urllib3==1.26.4
 binance-connector==2.0.0rc3
 binance-futures-connector==3.2.0
+apscheduler
